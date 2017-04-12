@@ -1,5 +1,6 @@
 package yanislav.com.autodata;
 
+
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
@@ -23,7 +24,8 @@ import yanislav.com.autodata.fragmens.ModelFragment;
 import yanislav.com.autodata.fragmens.SubmodelsFragment;
 import yanislav.com.autodata.utils.FragmentsManager;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity
+{
 
     private FragmentsManager fragmentsManager;
 
@@ -56,6 +58,7 @@ public class MainActivity extends AppCompatActivity {
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.menu_main, menu);
+
         return true;
     }
 
@@ -118,4 +121,6 @@ public class MainActivity extends AppCompatActivity {
             EventBus.getDefault().unregister(this);
         }
     }
+
+
 }

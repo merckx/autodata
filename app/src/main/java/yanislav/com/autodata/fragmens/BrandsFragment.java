@@ -1,12 +1,7 @@
 package yanislav.com.autodata.fragmens;
 
 import android.os.Bundle;
-import android.support.annotation.Nullable;
 import android.support.v7.widget.GridLayoutManager;
-import android.support.v7.widget.RecyclerView;
-import android.view.View;
-
-import com.android.commons.orientation.OrientationUtil;
 
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
@@ -16,9 +11,11 @@ import java.util.ArrayList;
 import butterknife.BindView;
 import yanislav.com.autodata.R;
 import yanislav.com.autodata.adapters.BrandsAdapter;
+import yanislav.com.autodata.api.Api;
 import yanislav.com.autodata.events.BrandLoadedEvent;
 import yanislav.com.autodata.model.Brand;
-import yanislav.com.autodata.network.Api;
+import yanislav.com.autodata.utils.AutoDataAdapter;
+import yanislav.com.autodata.utils.AutoDataRecyclerView;
 import yanislav.com.autodata.utils.GridDividerDecoration;
 
 /**
@@ -27,7 +24,7 @@ import yanislav.com.autodata.utils.GridDividerDecoration;
 public class BrandsFragment extends BaseAutodataFragment {
 
     @BindView(R.id.brands_list)
-    RecyclerView brandsList;
+    AutoDataRecyclerView brandsList;
 
     public static BrandsFragment newInstance() {
 
@@ -47,6 +44,7 @@ public class BrandsFragment extends BaseAutodataFragment {
         setDisplayHomeAsUpEnabled(false);
         setTitle("Autodata");
         setSubtitle(null);
+        configureSearchableContent(true);
     }
 
     @Override
@@ -69,32 +67,23 @@ public class BrandsFragment extends BaseAutodataFragment {
     }
 
     @Override
-    public void onViewCreated(View view, @Nullable Bundle savedInstanceState) {
-        super.onViewCreated(view, savedInstanceState);
-    }
-
-    @Override
     public void onDestroyView() {
         super.onDestroyView();
         unregisterEventBus();
     }
 
 
-    private int getSpanCount() {
-        if (OrientationUtil.isLandscape(getActivity()))
-        {
-            return 3;
-        }
-        else
-        {
-            return 2;
-        }
-    }
-
 
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void onBrandsLoadedEvent(BrandLoadedEvent event) {
-        BrandsAdapter adapter = (BrandsAdapter) brandsList.getAdapter();
+        AutoDataAdapter adapter = brandsList.getAdapter();
         adapter.switchContent(event.getBrands());
+    }
+
+
+    @Override
+    protected AutoDataRecyclerView getSearchableList()
+    {
+        return brandsList;
     }
 }

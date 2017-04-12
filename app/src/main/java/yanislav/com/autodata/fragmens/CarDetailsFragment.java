@@ -15,11 +15,11 @@ import butterknife.BindView;
 import yanislav.com.autodata.R;
 import yanislav.com.autodata.adapters.CarDetailsAdapter;
 import yanislav.com.autodata.adapters.CaroselAdapter;
+import yanislav.com.autodata.api.Api;
 import yanislav.com.autodata.events.CarDetailsLoadedEvent;
 import yanislav.com.autodata.model.CarListInfoData;
 import yanislav.com.autodata.model.DetailsInfoData;
 import yanislav.com.autodata.model.ImageHolder;
-import yanislav.com.autodata.network.Api;
 import yanislav.com.autodata.utils.AutoDataAdapter;
 
 /**
@@ -57,6 +57,7 @@ public class CarDetailsFragment extends BaseAutodataFragment {
     @Override
     protected void onCreateView() {
         registerEventBus();
+        carTitle.setText(carListInfoData.getName());
         carImages.setLayoutManager(new LinearLayoutManager(getActivity(), LinearLayoutManager.HORIZONTAL, false));
         carImages.setAdapter(new CaroselAdapter(new ArrayList<ImageHolder>(), getActivity()));
         detailsTable.setLayoutManager(new LinearLayoutManager(getActivity()));

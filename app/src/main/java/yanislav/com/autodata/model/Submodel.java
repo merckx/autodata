@@ -8,7 +8,8 @@ import com.google.gson.annotations.SerializedName;
 /**
  * Created by yani on 25.2.2017 г..
  */
-public class Submodel implements Parcelable
+public class Submodel extends BaseAutodataModelEntity
+                      implements Parcelable
 {
     @SerializedName("n")
     private int begin;
@@ -128,5 +129,13 @@ public class Submodel implements Parcelable
         dest.writeString(image);
         dest.writeString(model);
         dest.writeString(name);
+    }
+
+
+    @Override
+    public boolean contains(String constraint)
+    {
+        return this.name.toUpperCase()
+                        .contains(constraint.toUpperCase());
     }
 }

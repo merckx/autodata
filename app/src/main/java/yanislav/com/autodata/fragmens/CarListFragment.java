@@ -14,11 +14,11 @@ import butterknife.BindView;
 import yanislav.com.autodata.R;
 import yanislav.com.autodata.adapters.CarListInfoAdapter;
 import yanislav.com.autodata.adapters.CaroselAdapter;
+import yanislav.com.autodata.api.Api;
 import yanislav.com.autodata.events.CarListLoadedEvent;
 import yanislav.com.autodata.model.CarListInfoData;
 import yanislav.com.autodata.model.ImageHolder;
 import yanislav.com.autodata.model.Submodel;
-import yanislav.com.autodata.network.Api;
 import yanislav.com.autodata.utils.AutoDataAdapter;
 
 /**

@@ -1,4 +1,4 @@
-package yanislav.com.autodata.network.deserializers;
+package yanislav.com.autodata.api.deserializers;
 
 import com.google.gson.JsonDeserializationContext;
 import com.google.gson.JsonDeserializer;

@@ -1,4 +1,4 @@
-package yanislav.com.autodata.network;
+package yanislav.com.autodata.api;
 
 import android.util.Base64;
 import android.util.Log;
@@ -13,6 +13,13 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import io.reactivex.ObservableSource;
+import io.reactivex.Observer;
+import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.disposables.Disposable;
+import io.reactivex.functions.Function;
+import io.reactivex.observers.DisposableObserver;
+import io.reactivex.schedulers.Schedulers;
 import okhttp3.Interceptor;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -22,6 +29,7 @@ import okhttp3.logging.HttpLoggingInterceptor;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Retrofit;
+import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory;
 import retrofit2.converter.gson.GsonConverterFactory;
 import yanislav.com.autodata.events.BrandLoadedEvent;
 import yanislav.com.autodata.events.CarDetailsLoadedEvent;
@@ -39,9 +47,9 @@ import yanislav.com.autodata.model.ImagesData;
 import yanislav.com.autodata.model.ImagesInfoData;
 import yanislav.com.autodata.model.Model;
 import yanislav.com.autodata.model.Submodel;
-import yanislav.com.autodata.network.deserializers.CarListDataDeserializer;
-import yanislav.com.autodata.network.deserializers.DetailsDataDeserializer;
-import yanislav.com.autodata.network.deserializers.ImagesDataDeserializer;
+import yanislav.com.autodata.api.deserializers.CarListDataDeserializer;
+import yanislav.com.autodata.api.deserializers.DetailsDataDeserializer;
+import yanislav.com.autodata.api.deserializers.ImagesDataDeserializer;
 
 /**
  * Created by yani on 20.2.2017 г..
@@ -53,7 +61,7 @@ public class Api {
     public static final String BASE_SERVICE_ENDPOINT = BASE_URL + "/app/";
 
     private static final Api INSTANCE = new Api();
-    private static AutodataService service;
+    private static AutoDataService service;
 
     public static Api getInstance()
     {
@@ -62,45 +70,71 @@ public class Api {
 
     private Api()
     {
-        OkHttpClient.Builder paramContext = new OkHttpClient().newBuilder();
-        paramContext.addInterceptor(new HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY));
-        paramContext.addInterceptor(new Interceptor()
+        OkHttpClient.Builder okHttpBuilder = new OkHttpClient().newBuilder();
+        okHttpBuilder.addInterceptor(new HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY));
+        okHttpBuilder.addInterceptor(new Interceptor()
         {
-            public Response intercept(Interceptor.Chain paramAnonymousChain)
+            public Response intercept(Interceptor.Chain chain)
                     throws IOException
             {
-                Response resp = paramAnonymousChain.proceed(paramAnonymousChain.request());
-                Object localObject = resp.body().string();
-                localObject = new String(Base64.decode(((String)localObject).substring(17, ((String)localObject).length()), 0));
-                localObject = new String(Base64.decode(((String)localObject).substring(14, ((String)localObject).length()), 0));
-                localObject = ResponseBody.create(MediaType.parse("application/json; charset=UTF-8"), (String)localObject);
-                return resp.newBuilder().body((ResponseBody)localObject).build();
+                Response resp = chain.proceed(chain.request());
+                String body = resp.body().string();
+                body = new String(Base64.decode(body.substring(17, body.length()), 0));
+                body = new String(Base64.decode(body.substring(14, body.length()), 0));
+                ResponseBody newBody = ResponseBody.create(MediaType.parse("application/json; charset=UTF-8"), body);
+                return resp.newBuilder().body(newBody).build();
             }
         });
+
         GsonBuilder localGsonBuilder = new GsonBuilder();
         localGsonBuilder.registerTypeAdapter(DetailsData.class, new DetailsDataDeserializer());
         localGsonBuilder.registerTypeAdapter(CarListData.class, new CarListDataDeserializer());
         localGsonBuilder.registerTypeAdapter(ImagesData.class, new ImagesDataDeserializer());
-        Retrofit retrofit = new Retrofit.Builder().baseUrl(BASE_SERVICE_ENDPOINT)
-                .addConverterFactory(GsonConverterFactory.create(localGsonBuilder.create())).client(paramContext.build()).build();
-        service = ((AutodataService)retrofit.create(AutodataService.class));
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl(BASE_SERVICE_ENDPOINT)
+                .addCallAdapterFactory(RxJava2CallAdapterFactory.createWithScheduler(Schedulers.io()))
+                .addConverterFactory(GsonConverterFactory.create(localGsonBuilder.create()))
+                .client(okHttpBuilder.build())
+
+                .build();
+        service = retrofit.create(AutoDataService.class);
     }
 
     public void loadBrands()
     {
-         service.getBrands("en").enqueue(
-                 new Callback<List<Brand>>() {
-                     @Override
-                     public void onResponse(Call<List<Brand>> call, retrofit2.Response<List<Brand>> response) {
-                         EventBus.getDefault().post(new BrandLoadedEvent(response.body()));
-                     }
+        service.getBrands("en")
+               .subscribeOn(Schedulers.io())
+               .observeOn(AndroidSchedulers.mainThread())
+               .onErrorResumeNext(new Function<Throwable, ObservableSource<? extends List<Brand>>>()
+                {
+                    @Override
+                    public ObservableSource<? extends List<Brand>> apply(Throwable throwable) throws Exception
+                    {
+                        return null;
+                    }
+                })
+               .subscribe(new DisposableObserver<List<Brand>>()
+                {
+                    @Override
+                    public void onNext(List<Brand> brands)
+                    {
+                        Log.i("NEXT", brands.get(0).getName());
+                        EventBus.getDefault().post(new BrandLoadedEvent(brands));
+                    }
 
-                     @Override
-                     public void onFailure(Call<List<Brand>> call, Throwable t) {
+                    @Override
+                    public void onError(Throwable throwable)
+                    {
+                        Log.e("BRANDS", "ERROR", throwable);
+                    }
 
-                     }
-                 }
-         );
+                    @Override
+                    public void onComplete()
+                    {
+                        Log.i("COMPLETE", "ASD");
+
+                    }
+                });
     }
 
     public void loadModels(final Brand brand) {
@@ -153,28 +187,23 @@ public class Api {
             public void onResponse(Call<CarListData> call, retrofit2.Response<CarListData> response) {
                 List<CarListInfoData> result = new ArrayList<CarListInfoData>();
                 int i = 0;
-                CarListInfoData localObject;
+                CarListInfoData carListInfoData;
                 while (i < response.body().getData().keySet().size() - 1)
                 {
-                    localObject = new CarListInfoData();
+                    carListInfoData = new CarListInfoData();
                     if (((Map)response.body().getData().get("" + i)).get("v1") != null)
                     {
-                        localObject.setName((String)((Map)response.body().getData().get("" + i)).get("v1"));
-                        localObject.setYears((String)((Map)response.body().getData().get("" + i)).get("v2"));
-                        localObject.setBrand(subModel.getBrand());
-                        localObject.setModel(subModel.getModel());
-                        localObject.setId(Integer.parseInt((String)((Map)response.body().getData().get("" + i)).get("id")));
-                        result.add(localObject);
-                    }
-                    if (i == 0)
-                    {
-//                        ListCarsFragment.this.firstText.setText((CharSequence)((Map)response.body().getData().get("" + i)).get("p1"));
-//                        ListCarsFragment.this.yearsText.setText((CharSequence)((Map)response.body().getData().get("" + i)).get("p2"));
+                        carListInfoData.setName((response.body().getData().get("" + i)).get("v1"));
+                        carListInfoData.setYears((response.body().getData().get("" + i)).get("v2"));
+                        carListInfoData.setBrand(subModel.getBrand());
+                        carListInfoData.setModel(subModel.getModel());
+                        carListInfoData.setId(Integer.parseInt((response.body().getData().get("" + i)).get("id")));
+                        result.add(carListInfoData);
                     }
                     i += 1;
                 }
 
-                Map images = (Map)response.body().getData().get("im");
+                Map<String, String> images = response.body().getData().get("im");
                 List<ImageHolder> imagesList = new ArrayList<>();
                 if (null != images)
                 {
@@ -185,9 +214,8 @@ public class Api {
                         imageId = (String)iterator.next();
                         ImageHolder localImageHolder = new ImageHolder();
                         localImageHolder.setId(Integer.parseInt(imageId));
-                        localImageHolder.setUrl((String)images.get(imageId));
+                        localImageHolder.setUrl(images.get(imageId));
                         imagesList.add(localImageHolder);
-//                        ListCarsFragment.this.caroselAdapter.getImages().add(localImageHolder);
                     }
                 }
                 Log.i("QUEUE RESPONSE", "onResponse: " + result.size() + " " + imagesList.size());
@@ -207,24 +235,17 @@ public class Api {
         service.getDetails(carListInfoData.getId(), "en").enqueue(new Callback<DetailsData>() {
             @Override
             public void onResponse(Call<DetailsData> call, retrofit2.Response<DetailsData> response) {
-//                DetailsFragment.this.adapter.getDetailsInfoDatas().clear();
                 List<DetailsInfoData> result  = new ArrayList();
                 int i = 0;
-//                Object localObject;
                 while (i < response.body().getData().keySet().size() - 1)
                 {
                     DetailsInfoData detailsInfoData = new DetailsInfoData();
                     detailsInfoData.setKey((response.body().getData().get("" + i)).get("p"));
                     detailsInfoData.setValue((response.body().getData().get("" + i)).get("v"));
-                    if (i == 0)
-                    {
-//                        DetailsFragment.this.title.setText(Html.fromHtml((String)((Map)response.body().getData().get("" + i)).get("t")));
-//                        DetailsFragment.this.getMainActivity().getSupportActionBar().setSubtitle(DetailsFragment.this.title.getText());
-                    }
                     result.add(detailsInfoData);
                     i += 1;
                 }
-//                DetailsFragment.this.adapter.getDetailsInfoDatas().addAll(paramAnonymousCall);
+
                 Map<String, String> images = response.body().getData().get("im");
                 List<ImageHolder> imageHolderList = new ArrayList<ImageHolder>();
                 if (images != null)
@@ -237,12 +258,9 @@ public class Api {
                         localImageHolder.setId(Integer.parseInt(imageId));
                         localImageHolder.setUrl(images.get(imageId));
                         imageHolderList.add(localImageHolder);
-//                        DetailsFragment.this.caroselAdapter.getImages().add(localImageHolder);
                     }
                 }
                 EventBus.getDefault().post(new CarDetailsLoadedEvent(imageHolderList, result));
-//                DetailsFragment.this.caroselAdapter.notifyDataSetChanged();
-//                DetailsFragment.this.adapter.notifyDataSetChanged();
             }
 
             @Override
@@ -269,9 +287,7 @@ public class Api {
                     localImagesInfoData.setBig(localMap.get("b"));
                     localImagesInfoData.setCopyRight(localMap.get("c"));
                     localImagesInfoData.setSmall(localMap.get("s"));
-//                    if (str.equals(FullscreenImageFragment.this.id + "")) {
-//                        paramAnonymousCall = localImagesInfoData;
-//                    }
+
                     result.add(localImagesInfoData);
                 }
 

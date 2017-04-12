@@ -7,12 +7,14 @@ import com.google.gson.annotations.SerializedName;
 
 import org.json.JSONObject;
 
+
 /**
  * Created by yani on 19.2.2017 г..
  */
 
 
-public class Brand implements Parcelable
+public class Brand extends BaseAutodataModelEntity
+                   implements Parcelable
 {
     int id;
     @SerializedName("na")
@@ -72,5 +74,13 @@ public class Brand implements Parcelable
     public void writeToParcel(Parcel dest, int flags) {
         dest.writeInt(id);
         dest.writeString(name);
+    }
+
+
+    @Override
+    public boolean contains(String constraint)
+    {
+        return name.toUpperCase()
+                   .contains(constraint.toUpperCase());
     }
 }

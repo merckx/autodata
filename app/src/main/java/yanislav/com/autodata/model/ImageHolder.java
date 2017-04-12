@@ -7,7 +7,8 @@ import android.os.Parcelable;
  * Created by yani on 12.3.2017 г..
  */
 
-public class ImageHolder implements Parcelable
+public class ImageHolder extends BaseAutodataModelEntity
+                         implements Parcelable
 {
     private int id;
     private String url;

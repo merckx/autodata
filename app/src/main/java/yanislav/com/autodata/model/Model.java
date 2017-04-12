@@ -11,7 +11,8 @@ import org.json.JSONObject;
  * Created by yani on 20.2.2017 г..
  */
 
-public class Model implements Parcelable
+public class Model extends BaseAutodataModelEntity
+                   implements Parcelable
 {
     private String brand;
     int id;
@@ -98,6 +99,13 @@ public class Model implements Parcelable
         dest.writeInt(id);
         dest.writeString(image);
         dest.writeString(name);
+    }
+
+    @Override
+    public boolean contains(String constraint)
+    {
+        return this.name.toUpperCase()
+                        .contains(constraint.toUpperCase());
     }
 }
 

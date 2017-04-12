@@ -3,9 +3,6 @@ package yanislav.com.autodata.fragmens;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v7.widget.GridLayoutManager;
-import android.support.v7.widget.RecyclerView;
-
-import com.android.commons.orientation.OrientationUtil;
 
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
@@ -18,7 +15,8 @@ import yanislav.com.autodata.adapters.ModelAdapter;
 import yanislav.com.autodata.events.ModelsLoadedEvent;
 import yanislav.com.autodata.model.Brand;
 import yanislav.com.autodata.model.Model;
-import yanislav.com.autodata.network.Api;
+import yanislav.com.autodata.api.Api;
+import yanislav.com.autodata.utils.AutoDataRecyclerView;
 import yanislav.com.autodata.utils.GridDividerDecoration;
 
 /**
@@ -30,7 +28,7 @@ public class ModelFragment extends BaseAutodataFragment {
     public static final String BRAND = "brand";
 
     @BindView(R.id.models_list)
-    RecyclerView modelsList;
+    AutoDataRecyclerView modelsList;
 
 
     private Brand brand;
@@ -75,6 +73,7 @@ public class ModelFragment extends BaseAutodataFragment {
         setDisplayHomeAsUpEnabled(true);
         setTitle(brand.getName());
         setSubtitle(null);
+        configureSearchableContent(true);
     }
 
     @Override
@@ -90,14 +89,9 @@ public class ModelFragment extends BaseAutodataFragment {
         adapter.switchContent(event.getModels());
     }
 
-    private int getSpanCount() {
-        if (OrientationUtil.isLandscape(getActivity()))
-        {
-            return 3;
-        }
-        else
-        {
-            return 2;
-        }
+    @Override
+    protected AutoDataRecyclerView getSearchableList()
+    {
+        return modelsList;
     }
 }

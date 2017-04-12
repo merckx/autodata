@@ -4,7 +4,7 @@ package yanislav.com.autodata.model;
  * Created by yani on 26.3.2017 г..
  */
 
-public class ImagesInfoData
+public class ImagesInfoData extends BaseAutodataModelEntity
 {
     private String big;
     private String copyRight;

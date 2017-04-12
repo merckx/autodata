@@ -18,7 +18,7 @@ import yanislav.com.autodata.adapters.FullScreenViewPagerAdapter;
 import yanislav.com.autodata.events.ImagesInfoDataLoadedEvent;
 import yanislav.com.autodata.model.ImageHolder;
 import yanislav.com.autodata.model.ImagesInfoData;
-import yanislav.com.autodata.network.Api;
+import yanislav.com.autodata.api.Api;
 import yanislav.com.autodata.utils.AutoDataAdapter;
 
 /**

@@ -3,10 +3,12 @@ package yanislav.com.autodata.model;
 import android.os.Parcel;
 import android.os.Parcelable;
 
+
 /**
  * Created by yani on 12.3.2017 г..
  */
-public class CarListInfoData implements Parcelable
+public class CarListInfoData extends BaseAutodataModelEntity
+                             implements Parcelable
 {
     private String brand;
     int id;
@@ -102,4 +104,5 @@ public class CarListInfoData implements Parcelable
         dest.writeString(name);
         dest.writeString(years);
     }
+
 }

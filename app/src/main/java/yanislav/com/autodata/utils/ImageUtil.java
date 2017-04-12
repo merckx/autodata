@@ -6,7 +6,7 @@ import android.widget.ImageView;
 import com.bumptech.glide.Glide;
 
 import yanislav.com.autodata.R;
-import yanislav.com.autodata.network.Api;
+import yanislav.com.autodata.api.Api;
 
 /**
  * Created by yani on 20.2.2017 г..

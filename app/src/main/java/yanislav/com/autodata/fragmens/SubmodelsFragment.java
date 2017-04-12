@@ -3,9 +3,6 @@ package yanislav.com.autodata.fragmens;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v7.widget.GridLayoutManager;
-import android.support.v7.widget.RecyclerView;
-
-import com.android.commons.orientation.OrientationUtil;
 
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
@@ -18,8 +15,9 @@ import yanislav.com.autodata.adapters.SubModelAdapter;
 import yanislav.com.autodata.events.SubModelsLoadedEvent;
 import yanislav.com.autodata.model.Model;
 import yanislav.com.autodata.model.Submodel;
-import yanislav.com.autodata.network.Api;
+import yanislav.com.autodata.api.Api;
 import yanislav.com.autodata.utils.AutoDataAdapter;
+import yanislav.com.autodata.utils.AutoDataRecyclerView;
 import yanislav.com.autodata.utils.GridDividerDecoration;
 
 /**
@@ -29,7 +27,7 @@ import yanislav.com.autodata.utils.GridDividerDecoration;
 public class SubmodelsFragment extends BaseAutodataFragment {
     public static final String MODEL = "model";
     @BindView(R.id.models_list)
-    RecyclerView subModels;
+    AutoDataRecyclerView subModels;
 
     private Model model;
 
@@ -71,7 +69,7 @@ public class SubmodelsFragment extends BaseAutodataFragment {
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void onSubModelsLoadedEvent(SubModelsLoadedEvent event)
     {
-        AutoDataAdapter adapter = (AutoDataAdapter) subModels.getAdapter();
+        AutoDataAdapter adapter = subModels.getAdapter();
         adapter.switchContent(event.getSubmodelList());
     }
 
@@ -81,22 +79,18 @@ public class SubmodelsFragment extends BaseAutodataFragment {
         setDisplayHomeAsUpEnabled(true);
         setTitle(model.getBrand());
         setSubtitle(model.getName());
-    }
-
-    private int getSpanCount() {
-        if (OrientationUtil.isLandscape(getActivity()))
-        {
-            return 3;
-        }
-        else
-        {
-            return 2;
-        }
+        configureSearchableContent(true);
     }
 
 
     @Override
     protected int getLayoutId() {
         return R.layout.fragment_model;
+    }
+
+    @Override
+    protected AutoDataRecyclerView getSearchableList()
+    {
+        return subModels;
     }
 }

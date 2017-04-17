@@ -17,6 +17,7 @@ import io.reactivex.ObservableSource;
 import io.reactivex.Observer;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.disposables.Disposable;
+import io.reactivex.functions.Consumer;
 import io.reactivex.functions.Function;
 import io.reactivex.observers.DisposableObserver;
 import io.reactivex.schedulers.Schedulers;
@@ -100,6 +101,24 @@ public class Api {
         service = retrofit.create(AutoDataService.class);
     }
 
+    public void loadBrands1()
+    {
+        service.getBrands1("en")
+                .enqueue(new Callback<List<Brand>>() {
+                    @Override
+                    public void onResponse(Call<List<Brand>> call, retrofit2.Response<List<Brand>> response) {
+                        Log.i("RESPONSE", response.body().get(0).getName());
+                        Log.i("THREADRETROFIT", Thread.currentThread().getName());
+//                        EventBus.getDefault().post(new BrandLoadedEvent(response.body()));
+                    }
+
+                    @Override
+                    public void onFailure(Call<List<Brand>> call, Throwable throwable) {
+
+                    }
+                });
+    }
+
     public void loadBrands()
     {
         service.getBrands("en")
@@ -107,7 +126,6 @@ public class Api {
                .observeOn(AndroidSchedulers.mainThread())
                .onErrorResumeNext(new Function<Throwable, ObservableSource<? extends List<Brand>>>()
                 {
-                    @Override
                     public ObservableSource<? extends List<Brand>> apply(Throwable throwable) throws Exception
                     {
                         return null;
@@ -119,6 +137,7 @@ public class Api {
                     public void onNext(List<Brand> brands)
                     {
                         Log.i("NEXT", brands.get(0).getName());
+                        Log.i("THREADRX", Thread.currentThread().getName());
                         EventBus.getDefault().post(new BrandLoadedEvent(brands));
                     }
 
@@ -138,45 +157,133 @@ public class Api {
     }
 
     public void loadModels(final Brand brand) {
-        service.getModels(brand.getId(), "en").enqueue(
-                new Callback<List<Model>>() {
+        service.getModels(brand.getId(), "en")
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .onErrorResumeNext(new Function<Throwable, ObservableSource<? extends List<Model>>>()
+                {
+                    public ObservableSource<? extends List<Model>> apply(Throwable throwable) throws Exception
+                    {
+                        return null;
+                    }
+                })
+                .map(new Function<List<Model>, List<Model>>() {
                     @Override
-                    public void onResponse(Call<List<Model>> call, retrofit2.Response<List<Model>> response) {
-                        List<Model> modelList = response.body();
-                        for(Model model : modelList)
+                    public List<Model> apply(List<Model> models) throws Exception {
+                        for(Model model : models)
                         {
                             model.setBrand(brand.getName());
                         }
-                        EventBus.getDefault().post(new ModelsLoadedEvent(response.body()));
+                        return models;
+                    }
+                })
+                .subscribe(new DisposableObserver<List<Model>>()
+                {
+                    @Override
+                    public void onNext(List<Model> models)
+                    {
+                        Log.i("NEXT", models.get(0).getName());
+                        Log.i("THREADRX", Thread.currentThread().getName());
+//                    EventBus.getDefault().post(new BrandLoadedEvent(brands));
+                        EventBus.getDefault().post(new ModelsLoadedEvent(models));
                     }
 
                     @Override
-                    public void onFailure(Call<List<Model>> call, Throwable t) {
+                    public void onError(Throwable throwable)
+                    {
+                        Log.e("BRANDS", "ERROR", throwable);
+                    }
+
+                    @Override
+                    public void onComplete()
+                    {
+                        Log.i("COMPLETE", "ASD");
 
                     }
-                }
-        );
+                });
+//                .enqueue(
+//                new Callback<List<Model>>() {
+//                    @Override
+//                    public void onResponse(Call<List<Model>> call, retrofit2.Response<List<Model>> response) {
+//                        List<Model> modelList = response.body();
+//                        for(Model model : modelList)
+//                        {
+//                            model.setBrand(brand.getName());
+//                        }
+//                        EventBus.getDefault().post(new ModelsLoadedEvent(response.body()));
+//                    }
+//
+//                    @Override
+//                    public void onFailure(Call<List<Model>> call, Throwable t) {
+//
+//                    }
+//                }
+//        );
     }
 
 
     public void loadSubModels(final Model model)
     {
-        service.getSubModels(model.getId(), "en").enqueue(new Callback<List<Submodel>>() {
-            @Override
-            public void onResponse(Call<List<Submodel>> call, retrofit2.Response<List<Submodel>> response) {
-                List<Submodel> submodelList = response.body();
-                for(Submodel submodel : submodelList)
+        service.getSubModels(model.getId(), "en")
+               .subscribeOn(Schedulers.io())
+               .observeOn(AndroidSchedulers.mainThread())
+               .onErrorResumeNext(new Function<Throwable, ObservableSource<? extends List<Submodel>>>()
+            {
+                public ObservableSource<? extends List<Submodel>> apply(Throwable throwable) throws Exception
                 {
-                    submodel.setBrand(model.getBrand());
+                    return null;
                 }
-                EventBus.getDefault().post(new SubModelsLoadedEvent(response.body()));
-            }
+            })
+                .map(new Function<List<Submodel>, List<Submodel>>() {
+                    @Override
+                    public List<Submodel> apply(List<Submodel> submodels) throws Exception {
+                        for(Submodel submodel : submodels)
+                        {
+                            submodel.setBrand(model.getBrand());
+                        }
+                        return submodels;
+                    }
+                })
+            .subscribe(new DisposableObserver<List<Submodel>>()
+            {
+                @Override
+                public void onNext(List<Submodel> submodels)
+                {
+                    Log.i("NEXT", submodels.get(0).getName());
+                    Log.i("THREADRX", Thread.currentThread().getName());
+//                    EventBus.getDefault().post(new BrandLoadedEvent(brands));
+                    EventBus.getDefault().post(new SubModelsLoadedEvent(submodels));
+                }
 
-            @Override
-            public void onFailure(Call<List<Submodel>> call, Throwable t) {
+                @Override
+                public void onError(Throwable throwable)
+                {
+                    Log.e("BRANDS", "ERROR", throwable);
+                }
 
-            }
-        });
+                @Override
+                public void onComplete()
+                {
+                    Log.i("COMPLETE", "ASD");
+
+                }
+            });
+//                .enqueue(new Callback<List<Submodel>>() {
+//            @Override
+//            public void onResponse(Call<List<Submodel>> call, retrofit2.Response<List<Submodel>> response) {
+//                List<Submodel> submodelList = response.body();
+//                for(Submodel submodel : submodelList)
+//                {
+//                    submodel.setBrand(model.getBrand());
+//                }
+//                EventBus.getDefault().post(new SubModelsLoadedEvent(response.body()));
+//            }
+//
+//            @Override
+//            public void onFailure(Call<List<Submodel>> call, Throwable t) {
+//
+//            }
+//        });
     }
 
 
@@ -232,42 +339,74 @@ public class Api {
 
     public void loadCarDetails(CarListInfoData carListInfoData)
     {
-        service.getDetails(carListInfoData.getId(), "en").enqueue(new Callback<DetailsData>() {
-            @Override
-            public void onResponse(Call<DetailsData> call, retrofit2.Response<DetailsData> response) {
-                List<DetailsInfoData> result  = new ArrayList();
-                int i = 0;
-                while (i < response.body().getData().keySet().size() - 1)
-                {
-                    DetailsInfoData detailsInfoData = new DetailsInfoData();
-                    detailsInfoData.setKey((response.body().getData().get("" + i)).get("p"));
-                    detailsInfoData.setValue((response.body().getData().get("" + i)).get("v"));
-                    result.add(detailsInfoData);
-                    i += 1;
-                }
-
-                Map<String, String> images = response.body().getData().get("im");
-                List<ImageHolder> imageHolderList = new ArrayList<ImageHolder>();
-                if (images != null)
-                {
-                    Iterator iterator = images.keySet().iterator();
-                    while (iterator.hasNext())
-                    {
-                        String imageId = (String)iterator.next();
-                        ImageHolder localImageHolder = new ImageHolder();
-                        localImageHolder.setId(Integer.parseInt(imageId));
-                        localImageHolder.setUrl(images.get(imageId));
-                        imageHolderList.add(localImageHolder);
+        service.getDetails(carListInfoData.getId(), "en")
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .map(new Function<DetailsData, List<DetailsInfoData>>() {
+                    @Override
+                    public List<DetailsInfoData> apply(DetailsData detailsData) throws Exception {
+                        return null;
                     }
-                }
-                EventBus.getDefault().post(new CarDetailsLoadedEvent(imageHolderList, result));
-            }
+                })
+                .subscribe(new DisposableObserver<List<DetailsInfoData>>()
+                {
+                    @Override
+                    public void onNext(List<DetailsInfoData> submodels)
+                    {
+//                        Log.i("NEXT", submodels.get(0).getName());
+//                        Log.i("THREADRX", Thread.currentThread().getName());
+//                        EventBus.getDefault().post(new CarDetailsLoadedEvent(imageHolderList, result));
+                    }
 
-            @Override
-            public void onFailure(Call<DetailsData> call, Throwable t) {
+                    @Override
+                    public void onError(Throwable throwable)
+                    {
+                        Log.e("BRANDS", "ERROR", throwable);
+                    }
 
-            }
-        });
+                    @Override
+                    public void onComplete()
+                    {
+                        Log.i("COMPLETE", "ASD");
+
+                    }
+                });
+//                .enqueue(new Callback<DetailsData>() {
+//            @Override
+//            public void onResponse(Call<DetailsData> call, retrofit2.Response<DetailsData> response) {
+//                List<DetailsInfoData> result  = new ArrayList();
+//                int i = 0;
+//                while (i < response.body().getData().keySet().size() - 1)
+//                {
+//                    DetailsInfoData detailsInfoData = new DetailsInfoData();
+//                    detailsInfoData.setKey((response.body().getData().get("" + i)).get("p"));
+//                    detailsInfoData.setValue((response.body().getData().get("" + i)).get("v"));
+//                    result.add(detailsInfoData);
+//                    i += 1;
+//                }
+//
+//                Map<String, String> images = response.body().getData().get("im");
+//                List<ImageHolder> imageHolderList = new ArrayList<ImageHolder>();
+//                if (images != null)
+//                {
+//                    Iterator iterator = images.keySet().iterator();
+//                    while (iterator.hasNext())
+//                    {
+//                        String imageId = (String)iterator.next();
+//                        ImageHolder localImageHolder = new ImageHolder();
+//                        localImageHolder.setId(Integer.parseInt(imageId));
+//                        localImageHolder.setUrl(images.get(imageId));
+//                        imageHolderList.add(localImageHolder);
+//                    }
+//                }
+//                EventBus.getDefault().post(new CarDetailsLoadedEvent(imageHolderList, result));
+//            }
+//
+//            @Override
+//            public void onFailure(Call<DetailsData> call, Throwable t) {
+//
+//            }
+//        });
 
     }
 

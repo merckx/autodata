@@ -63,7 +63,6 @@ public class BrandsFragment extends BaseAutodataFragment {
 
         Api.getInstance().loadBrands();
 
-
     }
 
     @Override

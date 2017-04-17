@@ -29,19 +29,13 @@ public abstract class AutoDataAdapter<T extends ISearchable,VH extends BaseViewH
     private Class<VH> vhClass;
     private ValueFilter valueFilter;
 
-    private View.OnClickListener onItemClickListener;
 
     public AutoDataAdapter(Class<VH> vhClass, List<T> content, Context context) {
         this.content = content;
         this.mStringFilterList = new ArrayList<>(content);
         this.context = context;
         this.vhClass = vhClass;
-        onItemClickListener = new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
 
-            }
-        };
     }
 
     protected abstract int getLayoutItemId();

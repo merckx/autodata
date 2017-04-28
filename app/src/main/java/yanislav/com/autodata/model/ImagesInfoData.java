@@ -1,14 +1,34 @@
 package yanislav.com.autodata.model;
 
+import org.greenrobot.greendao.annotation.Entity;
+import org.greenrobot.greendao.annotation.Id;
+import org.greenrobot.greendao.annotation.Generated;
+
+import yanislav.com.autodata.utils.IVisitor;
+
 /**
  * Created by yani on 26.3.2017 г..
  */
-
+@Entity
 public class ImagesInfoData extends BaseAutodataModelEntity
 {
+    @Id(autoincrement = true)
+    long id;
     private String big;
     private String copyRight;
     private String small;
+
+    @Generated(hash = 1176005252)
+    public ImagesInfoData(long id, String big, String copyRight, String small) {
+        this.id = id;
+        this.big = big;
+        this.copyRight = copyRight;
+        this.small = small;
+    }
+
+    @Generated(hash = 1784668907)
+    public ImagesInfoData() {
+    }
 
     public boolean equals(Object paramObject)
     {
@@ -46,5 +66,28 @@ public class ImagesInfoData extends BaseAutodataModelEntity
     public void setSmall(String paramString)
     {
         this.small = paramString;
+    }
+
+    @Override
+    public long getId()
+    {
+        return id;
+    }
+
+    public void setId(long id)
+    {
+        this.id = id;
+    }
+
+    @Override
+    public <T> T accept(IVisitor<T> visitor)
+    {
+        return visitor.visit(this);
+    }
+
+    @Override
+    public boolean areContentsTheSame(BaseAutodataModelEntity baseAutodataModelEntity)
+    {
+        return false;
     }
 }

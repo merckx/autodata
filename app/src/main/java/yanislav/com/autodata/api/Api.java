@@ -7,31 +7,28 @@ import com.google.gson.GsonBuilder;
 
 import org.greenrobot.eventbus.EventBus;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Iterator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import io.reactivex.ObservableSource;
-import io.reactivex.Observer;
+import io.reactivex.Observable;
 import io.reactivex.android.schedulers.AndroidSchedulers;
-import io.reactivex.disposables.Disposable;
-import io.reactivex.functions.Consumer;
-import io.reactivex.functions.Function;
 import io.reactivex.observers.DisposableObserver;
 import io.reactivex.schedulers.Schedulers;
-import okhttp3.Interceptor;
+import network.NetworkUtil;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
+import okhttp3.Request;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
 import okhttp3.logging.HttpLoggingInterceptor;
-import retrofit2.Call;
-import retrofit2.Callback;
 import retrofit2.Retrofit;
 import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory;
 import retrofit2.converter.gson.GsonConverterFactory;
+import yanislav.com.autodata.AutoDataApp;
+import yanislav.com.autodata.api.deserializers.CarListDataDeserializer;
+import yanislav.com.autodata.api.deserializers.DetailsDataDeserializer;
+import yanislav.com.autodata.api.deserializers.ImagesDataDeserializer;
 import yanislav.com.autodata.events.BrandLoadedEvent;
 import yanislav.com.autodata.events.CarDetailsLoadedEvent;
 import yanislav.com.autodata.events.CarListLoadedEvent;
@@ -41,22 +38,23 @@ import yanislav.com.autodata.events.SubModelsLoadedEvent;
 import yanislav.com.autodata.model.Brand;
 import yanislav.com.autodata.model.CarListData;
 import yanislav.com.autodata.model.CarListInfoData;
+import yanislav.com.autodata.model.CarListInfoHolder;
 import yanislav.com.autodata.model.DetailsData;
 import yanislav.com.autodata.model.DetailsInfoData;
+import yanislav.com.autodata.model.DetailsInfoHolder;
 import yanislav.com.autodata.model.ImageHolder;
 import yanislav.com.autodata.model.ImagesData;
 import yanislav.com.autodata.model.ImagesInfoData;
 import yanislav.com.autodata.model.Model;
 import yanislav.com.autodata.model.Submodel;
-import yanislav.com.autodata.api.deserializers.CarListDataDeserializer;
-import yanislav.com.autodata.api.deserializers.DetailsDataDeserializer;
-import yanislav.com.autodata.api.deserializers.ImagesDataDeserializer;
+import yanislav.com.autodata.utils.NoNetworkConnectionException;
 
 /**
  * Created by yani on 20.2.2017 г..
  */
 
-public class Api {
+public class Api
+{
 
     public static final String BASE_URL = "http://www.auto-data.net";
     public static final String BASE_SERVICE_ENDPOINT = BASE_URL + "/app/";
@@ -73,65 +71,47 @@ public class Api {
     {
         OkHttpClient.Builder okHttpBuilder = new OkHttpClient().newBuilder();
         okHttpBuilder.addInterceptor(new HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY));
-        okHttpBuilder.addInterceptor(new Interceptor()
+        okHttpBuilder.addInterceptor(chain ->
         {
-            public Response intercept(Interceptor.Chain chain)
-                    throws IOException
-            {
-                Response resp = chain.proceed(chain.request());
-                String body = resp.body().string();
-                body = new String(Base64.decode(body.substring(17, body.length()), 0));
-                body = new String(Base64.decode(body.substring(14, body.length()), 0));
-                ResponseBody newBody = ResponseBody.create(MediaType.parse("application/json; charset=UTF-8"), body);
-                return resp.newBuilder().body(newBody).build();
-            }
+            Response resp = chain.proceed(chain.request());
+            String body = resp.body().string();
+            body = new String(Base64.decode(body.substring(17, body.length()), 0));
+            body = new String(Base64.decode(body.substring(14, body.length()), 0));
+            ResponseBody newBody = ResponseBody.create(MediaType.parse("application/json; charset=UTF-8"), body);
+            return resp.newBuilder().body(newBody).build();
         });
 
-        GsonBuilder localGsonBuilder = new GsonBuilder();
-        localGsonBuilder.registerTypeAdapter(DetailsData.class, new DetailsDataDeserializer());
-        localGsonBuilder.registerTypeAdapter(CarListData.class, new CarListDataDeserializer());
-        localGsonBuilder.registerTypeAdapter(ImagesData.class, new ImagesDataDeserializer());
+        okHttpBuilder.addInterceptor(chain ->
+        {
+            if (!NetworkUtil.isNetworkConnected(AutoDataApp.getINSTANCE().getContext()))
+            {
+                throw new NoNetworkConnectionException();
+            }
+            Request.Builder builder = chain.request().newBuilder();
+            return chain.proceed(builder.build());
+        });
+
+        GsonBuilder gsonBuilder = new GsonBuilder();
+        gsonBuilder.registerTypeAdapter(DetailsData.class, new DetailsDataDeserializer());
+        gsonBuilder.registerTypeAdapter(CarListData.class, new CarListDataDeserializer());
+        gsonBuilder.registerTypeAdapter(ImagesData.class, new ImagesDataDeserializer());
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl(BASE_SERVICE_ENDPOINT)
                 .addCallAdapterFactory(RxJava2CallAdapterFactory.createWithScheduler(Schedulers.io()))
-                .addConverterFactory(GsonConverterFactory.create(localGsonBuilder.create()))
+                .addConverterFactory(GsonConverterFactory.create(gsonBuilder.create()))
                 .client(okHttpBuilder.build())
-
                 .build();
+
         service = retrofit.create(AutoDataService.class);
     }
 
-    public void loadBrands1()
-    {
-        service.getBrands1("en")
-                .enqueue(new Callback<List<Brand>>() {
-                    @Override
-                    public void onResponse(Call<List<Brand>> call, retrofit2.Response<List<Brand>> response) {
-                        Log.i("RESPONSE", response.body().get(0).getName());
-                        Log.i("THREADRETROFIT", Thread.currentThread().getName());
-//                        EventBus.getDefault().post(new BrandLoadedEvent(response.body()));
-                    }
-
-                    @Override
-                    public void onFailure(Call<List<Brand>> call, Throwable throwable) {
-
-                    }
-                });
-    }
 
     public void loadBrands()
     {
         service.getBrands("en")
-               .subscribeOn(Schedulers.io())
-               .observeOn(AndroidSchedulers.mainThread())
-               .onErrorResumeNext(new Function<Throwable, ObservableSource<? extends List<Brand>>>()
-                {
-                    public ObservableSource<? extends List<Brand>> apply(Throwable throwable) throws Exception
-                    {
-                        return null;
-                    }
-                })
-               .subscribe(new DisposableObserver<List<Brand>>()
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(new DisposableObserver<List<Brand>>()
                 {
                     @Override
                     public void onNext(List<Brand> brands)
@@ -156,27 +136,19 @@ public class Api {
                 });
     }
 
-    public void loadModels(final Brand brand) {
+    public void loadModels(final Brand brand)
+    {
         service.getModels(brand.getId(), "en")
                 .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .onErrorResumeNext(new Function<Throwable, ObservableSource<? extends List<Model>>>()
+                .map(models ->
                 {
-                    public ObservableSource<? extends List<Model>> apply(Throwable throwable) throws Exception
+                    for (Model model : models)
                     {
-                        return null;
+                        model.setBrand(brand.getName());
                     }
+                    return models;
                 })
-                .map(new Function<List<Model>, List<Model>>() {
-                    @Override
-                    public List<Model> apply(List<Model> models) throws Exception {
-                        for(Model model : models)
-                        {
-                            model.setBrand(brand.getName());
-                        }
-                        return models;
-                    }
-                })
+                .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(new DisposableObserver<List<Model>>()
                 {
                     @Override
@@ -192,6 +164,7 @@ public class Api {
                     public void onError(Throwable throwable)
                     {
                         Log.e("BRANDS", "ERROR", throwable);
+                        //handleError
                     }
 
                     @Override
@@ -201,161 +174,31 @@ public class Api {
 
                     }
                 });
-//                .enqueue(
-//                new Callback<List<Model>>() {
-//                    @Override
-//                    public void onResponse(Call<List<Model>> call, retrofit2.Response<List<Model>> response) {
-//                        List<Model> modelList = response.body();
-//                        for(Model model : modelList)
-//                        {
-//                            model.setBrand(brand.getName());
-//                        }
-//                        EventBus.getDefault().post(new ModelsLoadedEvent(response.body()));
-//                    }
-//
-//                    @Override
-//                    public void onFailure(Call<List<Model>> call, Throwable t) {
-//
-//                    }
-//                }
-//        );
     }
 
 
     public void loadSubModels(final Model model)
     {
         service.getSubModels(model.getId(), "en")
-               .subscribeOn(Schedulers.io())
-               .observeOn(AndroidSchedulers.mainThread())
-               .onErrorResumeNext(new Function<Throwable, ObservableSource<? extends List<Submodel>>>()
-            {
-                public ObservableSource<? extends List<Submodel>> apply(Throwable throwable) throws Exception
-                {
-                    return null;
-                }
-            })
-                .map(new Function<List<Submodel>, List<Submodel>>() {
-                    @Override
-                    public List<Submodel> apply(List<Submodel> submodels) throws Exception {
-                        for(Submodel submodel : submodels)
-                        {
-                            submodel.setBrand(model.getBrand());
-                        }
-                        return submodels;
-                    }
-                })
-            .subscribe(new DisposableObserver<List<Submodel>>()
-            {
-                @Override
-                public void onNext(List<Submodel> submodels)
-                {
-                    Log.i("NEXT", submodels.get(0).getName());
-                    Log.i("THREADRX", Thread.currentThread().getName());
-//                    EventBus.getDefault().post(new BrandLoadedEvent(brands));
-                    EventBus.getDefault().post(new SubModelsLoadedEvent(submodels));
-                }
-
-                @Override
-                public void onError(Throwable throwable)
-                {
-                    Log.e("BRANDS", "ERROR", throwable);
-                }
-
-                @Override
-                public void onComplete()
-                {
-                    Log.i("COMPLETE", "ASD");
-
-                }
-            });
-//                .enqueue(new Callback<List<Submodel>>() {
-//            @Override
-//            public void onResponse(Call<List<Submodel>> call, retrofit2.Response<List<Submodel>> response) {
-//                List<Submodel> submodelList = response.body();
-//                for(Submodel submodel : submodelList)
-//                {
-//                    submodel.setBrand(model.getBrand());
-//                }
-//                EventBus.getDefault().post(new SubModelsLoadedEvent(response.body()));
-//            }
-//
-//            @Override
-//            public void onFailure(Call<List<Submodel>> call, Throwable t) {
-//
-//            }
-//        });
-    }
-
-
-    public void loadCarList(final Submodel subModel)
-    {
-        service.getListCars(subModel.getId(), "en").enqueue(new Callback<CarListData>() {
-            @Override
-            public void onResponse(Call<CarListData> call, retrofit2.Response<CarListData> response) {
-                List<CarListInfoData> result = new ArrayList<CarListInfoData>();
-                int i = 0;
-                CarListInfoData carListInfoData;
-                while (i < response.body().getData().keySet().size() - 1)
-                {
-                    carListInfoData = new CarListInfoData();
-                    if (((Map)response.body().getData().get("" + i)).get("v1") != null)
-                    {
-                        carListInfoData.setName((response.body().getData().get("" + i)).get("v1"));
-                        carListInfoData.setYears((response.body().getData().get("" + i)).get("v2"));
-                        carListInfoData.setBrand(subModel.getBrand());
-                        carListInfoData.setModel(subModel.getModel());
-                        carListInfoData.setId(Integer.parseInt((response.body().getData().get("" + i)).get("id")));
-                        result.add(carListInfoData);
-                    }
-                    i += 1;
-                }
-
-                Map<String, String> images = response.body().getData().get("im");
-                List<ImageHolder> imagesList = new ArrayList<>();
-                if (null != images)
-                {
-                    String imageId;
-                    Iterator iterator = images.keySet().iterator();
-                    while (iterator.hasNext())
-                    {
-                        imageId = (String)iterator.next();
-                        ImageHolder localImageHolder = new ImageHolder();
-                        localImageHolder.setId(Integer.parseInt(imageId));
-                        localImageHolder.setUrl(images.get(imageId));
-                        imagesList.add(localImageHolder);
-                    }
-                }
-                Log.i("QUEUE RESPONSE", "onResponse: " + result.size() + " " + imagesList.size());
-                EventBus.getDefault().post(new CarListLoadedEvent(imagesList, result));
-            }
-
-
-            @Override
-            public void onFailure(Call<CarListData> call, Throwable t) {
-                Log.e("QUE ERR", "onFailure: ", t);
-            }
-        });
-    }
-
-    public void loadCarDetails(CarListInfoData carListInfoData)
-    {
-        service.getDetails(carListInfoData.getId(), "en")
                 .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .map(new Function<DetailsData, List<DetailsInfoData>>() {
-                    @Override
-                    public List<DetailsInfoData> apply(DetailsData detailsData) throws Exception {
-                        return null;
+                .map(submodels ->
+                {
+                    for (Submodel submodel : submodels)
+                    {
+                        submodel.setBrand(model.getBrand());
                     }
+                    return submodels;
                 })
-                .subscribe(new DisposableObserver<List<DetailsInfoData>>()
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(new DisposableObserver<List<Submodel>>()
                 {
                     @Override
-                    public void onNext(List<DetailsInfoData> submodels)
+                    public void onNext(List<Submodel> submodels)
                     {
 //                        Log.i("NEXT", submodels.get(0).getName());
 //                        Log.i("THREADRX", Thread.currentThread().getName());
-//                        EventBus.getDefault().post(new CarDetailsLoadedEvent(imageHolderList, result));
+//                    EventBus.getDefault().post(new BrandLoadedEvent(brands));
+                        EventBus.getDefault().post(new SubModelsLoadedEvent(submodels));
                     }
 
                     @Override
@@ -371,72 +214,189 @@ public class Api {
 
                     }
                 });
-//                .enqueue(new Callback<DetailsData>() {
-//            @Override
-//            public void onResponse(Call<DetailsData> call, retrofit2.Response<DetailsData> response) {
-//                List<DetailsInfoData> result  = new ArrayList();
-//                int i = 0;
-//                while (i < response.body().getData().keySet().size() - 1)
-//                {
-//                    DetailsInfoData detailsInfoData = new DetailsInfoData();
-//                    detailsInfoData.setKey((response.body().getData().get("" + i)).get("p"));
-//                    detailsInfoData.setValue((response.body().getData().get("" + i)).get("v"));
-//                    result.add(detailsInfoData);
-//                    i += 1;
-//                }
-//
-//                Map<String, String> images = response.body().getData().get("im");
-//                List<ImageHolder> imageHolderList = new ArrayList<ImageHolder>();
-//                if (images != null)
-//                {
-//                    Iterator iterator = images.keySet().iterator();
-//                    while (iterator.hasNext())
-//                    {
-//                        String imageId = (String)iterator.next();
-//                        ImageHolder localImageHolder = new ImageHolder();
-//                        localImageHolder.setId(Integer.parseInt(imageId));
-//                        localImageHolder.setUrl(images.get(imageId));
-//                        imageHolderList.add(localImageHolder);
-//                    }
-//                }
-//                EventBus.getDefault().post(new CarDetailsLoadedEvent(imageHolderList, result));
-//            }
-//
-//            @Override
-//            public void onFailure(Call<DetailsData> call, Throwable t) {
-//
-//            }
-//        });
+    }
 
+
+    public void loadCarList(final Submodel subModel)
+    {
+        service.getListCars(subModel.getId(), "en")
+                .subscribeOn(Schedulers.io())
+                .subscribeOn(Schedulers.computation())
+                .map(carListData ->
+                {
+                    Observable<List<CarListInfoData>> carListInfoDataObservable = Observable.fromIterable(carListData.getData().entrySet())
+                            .subscribeOn(Schedulers.computation())
+                            .filter(entry -> !entry.getKey().equals("im"))
+                            .map(entry ->
+                            {
+                                CarListInfoData carListInfoData = new CarListInfoData();
+                                carListInfoData.setName(entry.getValue().get("v1"));
+                                carListInfoData.setYears(entry.getValue().get("v2"));
+                                carListInfoData.setBrand(subModel.getBrand());
+                                carListInfoData.setModel(subModel.getModel());
+                                carListInfoData.setId(Integer.parseInt(entry.getValue().get("id")));
+                                Log.i("carlistinfodata " + carListInfoData.getName(), Thread.currentThread().getName());
+                                return carListInfoData;
+                            })
+                            .toList().toObservable();
+
+                    Map<String, String> images = carListData.getData().get("im");
+                    if (null == images)
+                    {
+                        images = new HashMap<>();
+                    }
+
+                    Observable<List<ImageHolder>> imageListObservable = Observable.fromIterable(images.entrySet())
+                            .subscribeOn(Schedulers.computation())
+                            .map(entry ->
+                            {
+                                ImageHolder localImageHolder = new ImageHolder();
+                                localImageHolder.setId(Integer.parseInt(entry.getKey()));
+                                localImageHolder.setUrl(entry.getValue());
+                                Log.i("imageholder " + localImageHolder.getUrl(), Thread.currentThread().getName());
+                                return localImageHolder;
+                            })
+                            .toList().toObservable();
+
+                    return Observable.zip(imageListObservable, carListInfoDataObservable,
+                            (imageHolders, carListInfoData) -> new CarListInfoHolder(carListInfoData, imageHolders))
+                            .blockingFirst();
+                })
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(new DisposableObserver<CarListInfoHolder>()
+                {
+                    @Override
+                    public void onNext(CarListInfoHolder carListInfoHolder)
+                    {
+                        EventBus.getDefault().post(new CarListLoadedEvent(carListInfoHolder.getImageHolderList(),
+                                carListInfoHolder.getCarListInfoDataList()));
+                    }
+
+                    @Override
+                    public void onError(Throwable throwable)
+                    {
+
+                    }
+
+                    @Override
+                    public void onComplete()
+                    {
+
+                    }
+                });
+    }
+
+
+    public void loadCarDetails(CarListInfoData carListInfoData)
+    {
+        service.getDetails(carListInfoData.getId(), "en")
+                .subscribeOn(Schedulers.io())
+                .subscribeOn(Schedulers.computation())
+                .map(detailsData ->
+                {
+                    Observable<List<DetailsInfoData>> detailsInfoDataObservable = Observable.fromIterable(detailsData.getData().entrySet())
+                            .subscribeOn(Schedulers.computation())
+                            .filter(entry -> !entry.getKey().equals("im"))
+                            .map(entry ->
+                            {
+                                DetailsInfoData detailsInfoData = new DetailsInfoData();
+                                detailsInfoData.setKey(entry.getValue().get("p"));
+                                detailsInfoData.setValue(entry.getValue().get("v"));
+                                detailsInfoData.setCarListInfoDataId(carListInfoData.getId());
+                                Log.i("detailsInfoData " + detailsInfoData.getKey(), Thread.currentThread().getName());
+
+                                return detailsInfoData;
+                            }).toList().toObservable();
+
+                    Map<String, String> images = detailsData.getData().get("im");
+                    if (null == images)
+                    {
+                        images = new HashMap<>();
+                    }
+
+                    Observable<List<ImageHolder>> imageHolderObservable = Observable.fromIterable(images.entrySet())
+                            .subscribeOn(Schedulers.computation())
+                            .map(entry ->
+                            {
+                                ImageHolder localImageHolder = new ImageHolder();
+                                localImageHolder.setId(Integer.parseInt(entry.getKey()));
+                                localImageHolder.setUrl(entry.getValue());
+                                Log.i("imageholdercarlist " + localImageHolder.getUrl(), Thread.currentThread().getName());
+
+                                return localImageHolder;
+                            }).toList().toObservable();
+
+                    return Observable.zip(imageHolderObservable, detailsInfoDataObservable,
+                            (imageHolders, detailsInfoData) -> new DetailsInfoHolder(detailsInfoData, imageHolders)).blockingFirst();
+                })
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(new DisposableObserver<DetailsInfoHolder>()
+                {
+                    @Override
+                    public void onNext(DetailsInfoHolder holder)
+                    {
+                        EventBus.getDefault()
+                                .post(new CarDetailsLoadedEvent(holder.getImageHolderList(),
+                                        holder.getDetailsInfoDataList()));
+                    }
+
+                    @Override
+                    public void onError(Throwable throwable)
+                    {
+                        Log.e("BRANDS", "ERROR", throwable);
+                    }
+
+                    @Override
+                    public void onComplete()
+                    {
+                        Log.i("COMPLETE", "ASD");
+
+                    }
+                });
     }
 
     public void loadImages(final ImageHolder imageHolder)
     {
-        service.getImages(imageHolder.getId(), "en").enqueue(new Callback<ImagesData>() {
-            @Override
-            public void onResponse(Call<ImagesData> call, retrofit2.Response<ImagesData> response) {
-                ImagesData imagesData = response.body();
-                List<ImagesInfoData> result =  new ArrayList<ImagesInfoData>();
-                Iterator<String> iterator = imagesData.getData().keySet().iterator();
-                while(iterator.hasNext())
+        service.getImages(imageHolder.getId(), "en")
+                .subscribeOn(Schedulers.io())
+                .subscribeOn(Schedulers.computation())
+                .map(imagesData ->
                 {
-                    String key = iterator.next();
-                    Map<String, String> localMap = imagesData.getData().get(key);
-                    ImagesInfoData localImagesInfoData = new ImagesInfoData();
-                    localImagesInfoData.setBig(localMap.get("b"));
-                    localImagesInfoData.setCopyRight(localMap.get("c"));
-                    localImagesInfoData.setSmall(localMap.get("s"));
+                    List<ImagesInfoData> result = Observable.fromIterable(imagesData.getData().entrySet())
+                            .subscribeOn(Schedulers.computation())
+                            .map(entry ->
+                            {
+                                ImagesInfoData localImagesInfoData = new ImagesInfoData();
+                                localImagesInfoData.setBig(entry.getValue().get("b"));
+                                localImagesInfoData.setCopyRight(entry.getValue().get("c"));
+                                localImagesInfoData.setSmall(entry.getValue().get("s"));
+                                return localImagesInfoData;
+                            })
+                            .toList().blockingGet();
 
-                    result.add(localImagesInfoData);
-                }
+                    return result;
+                })
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(new DisposableObserver<List<ImagesInfoData>>()
+                {
+                    @Override
+                    public void onNext(List<ImagesInfoData> imagesInfoData)
+                    {
+                        EventBus.getDefault().post(new ImagesInfoDataLoadedEvent(imagesInfoData));
+                    }
 
-                EventBus.getDefault().post(new ImagesInfoDataLoadedEvent(result));
-            }
+                    @Override
+                    public void onError(Throwable throwable)
+                    {
 
-            @Override
-            public void onFailure(Call<ImagesData> call, Throwable t) {
-                Log.e("QUE ERR", "onFailure: ", t);
-            }
-        });
+                    }
+
+                    @Override
+                    public void onComplete()
+                    {
+
+                    }
+                });
+
     }
 }

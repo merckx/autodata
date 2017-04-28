@@ -5,18 +5,24 @@ import android.os.Parcelable;
 
 import com.google.gson.annotations.SerializedName;
 
+import org.greenrobot.greendao.annotation.Entity;
+import org.greenrobot.greendao.annotation.Generated;
+import org.greenrobot.greendao.annotation.Id;
 import org.json.JSONObject;
+
+import yanislav.com.autodata.utils.IVisitor;
 
 
 /**
  * Created by yani on 19.2.2017 г..
  */
 
-
+@Entity
 public class Brand extends BaseAutodataModelEntity
                    implements Parcelable
 {
-    int id;
+    @Id
+    long id;
     @SerializedName("na")
     String name;
 
@@ -25,12 +31,18 @@ public class Brand extends BaseAutodataModelEntity
     public Brand(JSONObject paramJSONObject)
     {
         this.name = paramJSONObject.optString("na");
-        this.id = paramJSONObject.optInt("id");
+        this.id = paramJSONObject.optLong("id");
     }
 
     protected Brand(Parcel in) {
-        id = in.readInt();
+        id = in.readLong();
         name = in.readString();
+    }
+
+    @Generated(hash = 289657852)
+    public Brand(long id, String name) {
+        this.id = id;
+        this.name = name;
     }
 
     public static final Creator<Brand> CREATOR = new Creator<Brand>() {
@@ -45,7 +57,8 @@ public class Brand extends BaseAutodataModelEntity
         }
     };
 
-    public int getId()
+    @Override
+    public long getId()
     {
         return this.id;
     }
@@ -55,9 +68,9 @@ public class Brand extends BaseAutodataModelEntity
         return this.name;
     }
 
-    public void setId(int paramInt)
+    public void setId(long paramLong)
     {
-        this.id = paramInt;
+        this.id = paramLong;
     }
 
     public void setName(String paramString)
@@ -72,7 +85,7 @@ public class Brand extends BaseAutodataModelEntity
 
     @Override
     public void writeToParcel(Parcel dest, int flags) {
-        dest.writeInt(id);
+        dest.writeLong(id);
         dest.writeString(name);
     }
 
@@ -82,5 +95,18 @@ public class Brand extends BaseAutodataModelEntity
     {
         return name.toUpperCase()
                    .contains(constraint.toUpperCase());
+    }
+
+    @Override
+    public <T> T accept(IVisitor<T> visitor)
+    {
+       return visitor.visit(this);
+    }
+
+    @Override
+    public boolean areContentsTheSame(BaseAutodataModelEntity baseAutodataModelEntity)
+    {
+        Brand brand = (Brand) baseAutodataModelEntity;
+        return this.getName().equals(brand.getName());
     }
 }

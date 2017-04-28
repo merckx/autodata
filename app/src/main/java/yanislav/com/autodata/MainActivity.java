@@ -6,6 +6,8 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.TextView;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
@@ -122,5 +124,9 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
-
+    private void showNoInternetView()
+    {
+        TextView tv = (TextView) findViewById(R.id.no_internet_view);
+        tv.setVisibility(View.VISIBLE);
+    }
 }

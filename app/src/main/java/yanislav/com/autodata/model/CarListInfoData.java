@@ -3,15 +3,23 @@ package yanislav.com.autodata.model;
 import android.os.Parcel;
 import android.os.Parcelable;
 
+import org.greenrobot.greendao.annotation.Entity;
+import org.greenrobot.greendao.annotation.Id;
+import org.greenrobot.greendao.annotation.Generated;
+
+import yanislav.com.autodata.utils.IVisitor;
+
 
 /**
  * Created by yani on 12.3.2017 г..
  */
+@Entity
 public class CarListInfoData extends BaseAutodataModelEntity
                              implements Parcelable
 {
     private String brand;
-    int id;
+    @Id
+    long id;
     private String model;
     String name;
     String years;
@@ -23,10 +31,19 @@ public class CarListInfoData extends BaseAutodataModelEntity
 
     protected CarListInfoData(Parcel in) {
         brand = in.readString();
-        id = in.readInt();
+        id = in.readLong();
         model = in.readString();
         name = in.readString();
         years = in.readString();
+    }
+
+    @Generated(hash = 1620939010)
+    public CarListInfoData(String brand, long id, String model, String name, String years) {
+        this.brand = brand;
+        this.id = id;
+        this.model = model;
+        this.name = name;
+        this.years = years;
     }
 
     public static final Creator<CarListInfoData> CREATOR = new Creator<CarListInfoData>() {
@@ -46,7 +63,8 @@ public class CarListInfoData extends BaseAutodataModelEntity
         return this.brand;
     }
 
-    public int getId()
+    @Override
+    public long getId()
     {
         return this.id;
     }
@@ -71,7 +89,7 @@ public class CarListInfoData extends BaseAutodataModelEntity
         this.brand = paramString;
     }
 
-    public void setId(int paramInt)
+    public void setId(long paramInt)
     {
         this.id = paramInt;
     }
@@ -99,10 +117,21 @@ public class CarListInfoData extends BaseAutodataModelEntity
     @Override
     public void writeToParcel(Parcel dest, int flags) {
         dest.writeString(brand);
-        dest.writeInt(id);
+        dest.writeLong(id);
         dest.writeString(model);
         dest.writeString(name);
         dest.writeString(years);
     }
 
+    @Override
+    public <T> T accept(IVisitor<T> visitor)
+    {
+        return visitor.visit(this);
+    }
+
+    @Override
+    public boolean areContentsTheSame(BaseAutodataModelEntity baseAutodataModelEntity)
+    {
+        return false;
+    }
 }

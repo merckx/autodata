@@ -6,6 +6,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.request.RequestOptions;
 
 import butterknife.BindView;
 import yanislav.com.autodata.R;
@@ -31,7 +32,7 @@ public class BrandsViewHolder extends BaseViewHolder<Brand> {
     public void bind(Brand brand, Context context)
     {
         brandName.setText(brand.getName());
-        Glide.with(context).load(ImageUtil.generateImageUrl(brand.getName())).fitCenter().into(imageView);
+        Glide.with(context).load(ImageUtil.generateImageUrl(brand.getName())).apply(new RequestOptions().fitCenter()).into(imageView);
     }
 
 

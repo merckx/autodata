@@ -56,7 +56,7 @@ import yanislav.com.autodata.utils.NoNetworkConnectionException;
 public class Api
 {
 
-    public static final String BASE_URL = "http://www.auto-data.net";
+    public static final String BASE_URL = "https://www.auto-data.net";
     public static final String BASE_SERVICE_ENDPOINT = BASE_URL + "/app/";
 
     private static final Api INSTANCE = new Api();

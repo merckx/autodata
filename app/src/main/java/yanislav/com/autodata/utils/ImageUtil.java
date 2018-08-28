@@ -4,6 +4,7 @@ import android.content.Context;
 import android.widget.ImageView;
 
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.request.RequestOptions;
 
 import yanislav.com.autodata.R;
 import yanislav.com.autodata.api.Api;
@@ -38,6 +39,10 @@ public class ImageUtil
 
     public static void loadCarImage(ImageView imageView, String modelName, Context context)
     {
-        Glide.with(context).load(ImageUtil.generateImageUrlModel(modelName)).error(R.drawable.no).fitCenter().into(imageView);
+        Glide.with(context)
+                .setDefaultRequestOptions(new RequestOptions().error(R.drawable.no))
+                .load(ImageUtil.generateImageUrlModel(modelName))
+                .apply(new RequestOptions().fitCenter())
+                .into(imageView);
     }
 }

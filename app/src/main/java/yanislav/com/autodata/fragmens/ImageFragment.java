@@ -5,6 +5,7 @@ import android.support.annotation.Nullable;
 import android.widget.ImageView;
 
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.request.RequestOptions;
 
 import butterknife.BindView;
 import yanislav.com.autodata.R;
@@ -40,7 +41,7 @@ public class ImageFragment extends BaseAutodataFragment {
 
     @Override
     protected void onCreateView() {
-        Glide.with(this).load(ImageUtil.generateImageUrlModel(url)).asBitmap().error(R.drawable.no).into(imageView);
+        Glide.with(this).setDefaultRequestOptions(new RequestOptions().error(R.drawable.no)).asBitmap().load(ImageUtil.generateImageUrlModel(url)).into(imageView);
     }
 
     @Override
